@@ -180,3 +180,11 @@ google-chrome-stable --headless=new --no-sandbox --hide-scrollbars \
   正常 begin/end 插桩天然满足；replay 数据需保证该约束。
 - cpp-httplib 0.10.3（Ubuntu 包为声明头 + 共享库 `libcpp-httplib.so.0`，已 vendor
   到 `third_party/` 并写入 rpath）。
+
+## 第三方依赖与许可
+
+| 依赖 | 版本 | 许可 | 说明 |
+|---|---|---|---|
+| [cpp-httplib](https://github.com/yhirose/cpp-httplib) | 0.10.3 | MIT（Copyright (c) 2017 yhirose） | 仅 `tlperf-server` 使用；完整许可证见 `third_party/LICENSE-httplib` |
+
+本仓库不包含其它第三方代码；`tlperf.h` / `src/tlperf.cpp` / `demo/` / `web/` 均为本项目代码。
