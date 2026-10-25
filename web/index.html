@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tlperf - timeline profiler</title>
+<style>
+:root {
+  --bg: #101418;
+  --panel: #161c22;
+  --panel2: #1d252d;
+  --border: #2a333d;
+  --text: #d6dee6;
+  --muted: #7d8a97;
+  --accent: #4ea1ff;
+  --accent2: #7ee081;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ---- top bar ---- */
+#topbar { display: flex; align-items: center; gap: 14px; padding: 8px 12px;
+  background: var(--panel); border-bottom: 1px solid var(--border); flex: 0 0 auto; flex-wrap: wrap; }
+#topbar .logo { font-weight: 700; font-size: 15px; color: var(--accent); letter-spacing: .5px; }
+#topbar .stat { color: var(--muted); }
+#topbar .stat b { color: var(--text); font-weight: 600; }
+#topbar .spacer { flex: 1; }
+.ctrl { display: inline-flex; align-items: center; gap: 6px; }
+button, .search { background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 9px; font: inherit; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:active { transform: translateY(1px); }
+.search { min-width: 160px; }
+#windowLabel { color: var(--accent2); min-width: 230px; text-align: right; }
+
+/* ---- body ---- */
+#body { display: flex; flex: 1 1 auto; min-height: 0; }
+#timeline-wrap { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden;
+  border-right: 1px solid var(--border); background: #0c0f13; display: flex; flex-direction: column; }
+canvas { display: block; }
+#timeline { cursor: grab; flex: 1 1 auto; }
+#timeline.dragging { cursor: grabbing; }
+#threadmap { flex: 0 0 30px; width: 100%; cursor: ew-resize; border-top: 1px solid var(--border); background: #0a0d11; }
+#colw { width: 120px; vertical-align: middle; accent-color: var(--accent); }
+.muted { color: var(--muted); }
+
+/* ---- right panel ---- */
+#side { width: 340px; flex: 0 0 340px; display: flex; flex-direction: column; min-height: 0; }
+.side-section { border-bottom: 1px solid var(--border); }
+.side-head { display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px; font-weight: 600; color: var(--muted); font-size: 12px;
+  text-transform: uppercase; letter-spacing: .5px; background: var(--panel); position: sticky; top: 0; }
+#inspector { padding: 10px 12px; }
+#inspector .kv { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px dotted var(--border); }
+#inspector .kv span:first-child { color: var(--muted); }
+#inspector .empty { color: var(--muted); }
+#inspector .fname { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+#stack { margin-top: 8px; }
+#stack .row { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+#stack .swatch { width: 10px; height: 10px; border-radius: 2px; flex: 0 0 10px; }
+#stack .row:hover { color: var(--accent); }
+#stack .depth { color: var(--muted); }
+
+#summary { flex: 1 1 auto; min-height: 0; overflow: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 4px 8px; white-space: nowrap; }
+th { position: sticky; top: 0; background: var(--panel2); color: var(--muted); font-weight: 600; font-size: 11px;
+  text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid var(--border); }
+tr.fn { cursor: pointer; }
+tr.fn:hover { background: var(--panel2); }
+tr.fn.sel { background: #213247; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.bar { height: 6px; border-radius: 3px; background: var(--accent); margin-top: 2px; }
+
+/* ---- minimap ---- */
+#minimap-wrap { flex: 0 0 auto; border-top: 1px solid var(--border); background: var(--panel); padding: 6px 10px 8px; }
+#minimap-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
+#minimap { width: 100%; height: 92px; cursor: pointer; border: 1px solid var(--border); border-radius: 4px; display: block; }
+
+/* ---- tooltip ---- */
+#tooltip { position: fixed; pointer-events: none; z-index: 50; background: #000c; border: 1px solid var(--accent);
+  border-radius: 6px; padding: 6px 9px; font-size: 12px; max-width: 320px; display: none;
+  box-shadow: 0 4px 16px #0008; }
+#tooltip .t-fn { font-weight: 700; color: var(--accent2); }
+#tooltip .t-row { color: var(--muted); margin-top: 2px; }
+#tooltip .t-row b { color: var(--text); font-weight: 600; }
+
+#status { padding: 4px 12px; font-size: 11px; color: var(--muted); background: var(--panel); border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <span class="logo">tlperf</span>
+    <span class="stat">threads <b id="s-threads">-</b></span>
+    <span class="stat">events <b id="s-events">-</b></span>
+    <span class="stat">span <b id="s-span">-</b></span>
+    <span class="spacer"></span>
+    <span class="ctrl"><button id="btn-zoomout" title="zoom out">−</button><button id="btn-zoomin" title="zoom in">+</button><button id="btn-fit" title="fit whole trace (time)">fit</button><button id="btn-cols" title="fit all threads to width (auto column width)">⊞</button></span>
+    <span class="ctrl muted" title="depth column width (px)">col
+      <input id="colw" type="range" min="3" max="64" value="16"></span>
+    <span class="ctrl"><button id="btn-prev" title="previous frame">⏮</button><button id="btn-play" title="play">▶</button><button id="btn-next" title="next frame">⏭</button></span>
+    <input class="search" id="search" placeholder="filter function…" spellcheck="false">
+    <span id="windowLabel">-</span>
+  </div>
+
+  <div id="body">
+    <div id="timeline-wrap">
+      <canvas id="timeline"></canvas>
+      <canvas id="threadmap"></canvas>
+    </div>
+
+    <div id="side">
+      <div class="side-section">
+        <div class="side-head">event</div>
+        <div id="inspector"><div class="empty">click a call to inspect it</div></div>
+      </div>
+      <div class="side-section" style="flex:1 1 auto; min-height:0; display:flex; flex-direction:column;">
+        <div class="side-head">self time (top)</div>
+        <div id="summary" style="overflow:auto;"></div>
+      </div>
+      <div id="minimap-wrap">
+        <div id="minimap-label"><span>overview</span><span id="mm-range">-</span></div>
+        <canvas id="minimap"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div id="status">ready</div>
+</div>
+<div id="tooltip"></div>
+<script src="app.js"></script>
+</body>
+</html>
