@@ -124,16 +124,13 @@ S::instance().dumpTo("tlperf.data");
 | 搜索框 | 高亮/过滤函数名 |
 | 点击某个调用块 | 右侧显示该事件详情 + 完整调用栈 |
 | 右侧 **self time** 表 | 按独占时间排序的函数热点；点击行可在图上高亮该函数 |
-| URL 参数 | `?from=US&to=US` 定位窗口；`?sel=线程:事件id` 预选事件（可分享/复现视图，见上图） |
+| URL 参数 | `?from=US&to=US` 定位窗口；`?sel=线程:事件id` 预选事件（可分享 / 复现视图） |
 
-**超多线程（如 72+）**：大列过多时内容宽度超出视口，用以下方式浏览——
-- **shift + 滚轮** 或 **水平滚轮** / **方向键 ←→** / **底部线程导航条**（点按拖动）平移线程列；
-- **col 滑块** 手动调小“深度列宽”，**⊞** 按钮把所有线程压缩进当前宽度；
-- 只绘制视口内的线程（**culling**），命中检测按列网格 **O(1)**，小地图/导航条**预渲染**后直接 blit，
-  因此帧成本约等于“可见线程 × 可见事件”，线程再多也不卡（76 线程 / 1.4 万事件实测流畅）。
+**指标**：`self`（独占）= 帧时长 − 直接子帧之和；`total`（累计）= 该函数所有帧原始时长之和（含子帧）。
 
-- **self（独占）时间** = 帧时长 − 直接子帧时长之和（真正花在该函数上的时间）。
-- **total（累计）时间** = 该名字所有帧的原始时长之和（含子帧）。
+**超多线程（72+）**：内容宽度超出视口时可横向浏览——`shift+滚轮` / 水平滚轮 / 方向键 `←→` /
+底部线程导航条（点按拖动）平移列；`col` 滑块调小深度列宽、`⊞` 一键压缩全部线程。
+性能：仅绘制视口内线程（culling）、命中检测 O(1)、小地图 / 导航条预渲染，帧成本 ≈ 可见线程 × 可见事件。
 
 ## JSON API
 
@@ -173,18 +170,14 @@ google-chrome-stable --headless=new --no-sandbox --hide-scrollbars \
 
 ## 说明 / 边界
 
-- 采样基于 `std::chrono::steady_clock`；热路径为每线程本地栈 + 单把全局锁
-  （仅在“函数名首次出现”和 `dump()` 时争用）。
+- 采样基于 `std::chrono::steady_clock`；热路径为每线程本地栈 + 单把全局锁（仅"函数名首次出现"与 `dump()` 时争用）。
 - `end(name)` 匹配**最近一层**未闭合的同名 `begin`（LIFO）。
-- 需要事件满足嵌套约束（子帧完全落在父帧区间内），否则 self/depth 分析会失真——
-  正常 begin/end 插桩天然满足；replay 数据需保证该约束。
-- cpp-httplib 0.10.3（header-only，完整实现已 vendor 到 `third_party/httplib.h`，
-  无需额外依赖/共享库，跨平台可编译；许可见 `third_party/LICENSE-httplib`）。
+- 要求事件满足嵌套约束（子帧完全落在父帧区间内），否则 self/depth 分析会失真；正常 begin/end 插桩天然满足，replay 数据需自行保证。
 
-## 第三方依赖与许可
+## 第三方依赖
 
-| 依赖 | 版本 | 许可 | 说明 |
-|---|---|---|---|
-| [cpp-httplib](https://github.com/yhirose/cpp-httplib) | 0.10.3 | MIT（Copyright (c) 2017 yhirose） | 仅 `tlperf-server` 使用；完整许可证见 `third_party/LICENSE-httplib` |
+| 依赖 | 版本 | 许可 |
+|---|---|---|
+| [cpp-httplib](https://github.com/yhirose/cpp-httplib) | 0.10.3 | MIT（Copyright (c) 2017 yhirose） |
 
-本仓库不包含其它第三方代码；`tlperf.h` / `src/tlperf.cpp` / `demo/` / `web/` 均为本项目代码。
+header-only，完整实现 vendored 于 `third_party/httplib.h`（许可见 `third_party/LICENSE-httplib`），仅 `tlperf-server` 使用；仓库无其它第三方代码。
