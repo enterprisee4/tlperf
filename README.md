@@ -31,8 +31,8 @@ src/tlperf-server.cpp    # 分析后端（httplib，JSON API）
 demo/tlperf-demo.cpp     # 生成合成数据（replay 模式）/ 真实时钟采样（-l）
 web/index.html           # 前端页面
 web/app.js               # 前端逻辑（Canvas 时序图、拖动、缩放、自检表）
-third_party/httplib.h    # cpp-httplib（header + 共享库）
-third_party/libcpp-httplib.so.0
+third_party/httplib.h    # cpp-httplib 0.10.3（header-only，完整实现）
+third_party/LICENSE-httplib  # cpp-httplib MIT 许可证
 ```
 
 ## 构建
@@ -178,8 +178,8 @@ google-chrome-stable --headless=new --no-sandbox --hide-scrollbars \
 - `end(name)` 匹配**最近一层**未闭合的同名 `begin`（LIFO）。
 - 需要事件满足嵌套约束（子帧完全落在父帧区间内），否则 self/depth 分析会失真——
   正常 begin/end 插桩天然满足；replay 数据需保证该约束。
-- cpp-httplib 0.10.3（Ubuntu 包为声明头 + 共享库 `libcpp-httplib.so.0`，已 vendor
-  到 `third_party/` 并写入 rpath）。
+- cpp-httplib 0.10.3（header-only，完整实现已 vendor 到 `third_party/httplib.h`，
+  无需额外依赖/共享库，跨平台可编译；许可见 `third_party/LICENSE-httplib`）。
 
 ## 第三方依赖与许可
 

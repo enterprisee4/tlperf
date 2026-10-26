@@ -22,17 +22,10 @@ target_link_libraries(tlperf PUBLIC Threads::Threads)
 add_executable(tlperf-demo demo/tlperf-demo.cpp)
 target_link_libraries(tlperf-demo PRIVATE tlperf)
 
-# ---- analyzer backend: HTTP/JSON server over tlperf.data (cpp-httplib) ----
+# ---- analyzer backend: HTTP/JSON server over tlperf.data (cpp-httplib, header-only) ----
 add_executable(tlperf-server src/tlperf-server.cpp)
 target_link_libraries(tlperf-server PRIVATE tlperf)
-# cpp-httplib (Ubuntu 0.10.3 is compiled into a shared lib; vendored in third_party)
-set(HTTPLIB_SO ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libcpp-httplib.so.0)
-target_link_libraries(tlperf-server PRIVATE ${HTTPLIB_SO})
-set_target_properties(tlperf-server PROPERTIES
-    BUILD_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
-    INSTALL_RPATH "$ORIGIN/../lib")
 
 install(TARGETS tlperf ARCHIVE DESTINATION lib)
 install(FILES tlperf.h DESTINATION include)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/third_party/httplib.h DESTINATION include)
-install(FILES ${HTTPLIB_SO} DESTINATION lib)
